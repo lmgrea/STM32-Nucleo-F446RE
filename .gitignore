@@ -1,0 +1,45 @@
+# ================================
+# STM32CubeIDE / Eclipse
+# ================================
+
+# Build output
+Debug/
+Release/
+
+# Eclipse workspace metadata
+.metadata/
+
+# Eclipse temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# ================================
+# OS files
+# ================================
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# ================================
+# STM32CubeIDE generated artifacts
+# ================================
+
+# Index/cache files
+*.pdom
+
+# ================================
+# Optional: compiled output
+# ================================
+
+*.o
+*.d
+*.elf
+*.hex
+*.bin
+*.map

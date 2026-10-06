@@ -25,6 +25,7 @@
 #include <stdio.h>
 
 #include "bmp280.h"
+#include "lcd1602a_v2.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -96,9 +97,10 @@ int main(void)
   MX_GPIO_Init();
   MX_I2C1_Init();
   MX_USART2_UART_Init();
-
   /* USER CODE BEGIN 2 */
   bmp280_init(&hi2c1);
+  lcd1602_init(&hi2c1);
+  lcd_display_string("Temperature:", 1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -106,12 +108,12 @@ int main(void)
   while (1)
   {
 	  bmp280_read_registers(&hi2c1, &huart2);
-	  bmp280_calc_temp_press();
+	  int temperature = bmp280_calc_temp_press() / 100;
+	  char temperature_string[12];
 	  bmp280_print_temp(&huart2);
+	  snprintf(temperature_string, sizeof(temperature_string), "%d F", temperature);
 
-//	  strcpy((char*)buf, "Hello!\r\n");
-//	  HAL_UART_Transmit(&huart2, buf, strlen((char*)buf), HAL_MAX_DELAY);
-//	  HAL_Delay(500);
+	  lcd_display_string(temperature_string, 2);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -254,6 +256,10 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_12|GPIO_PIN_13
+                          |GPIO_PIN_14|GPIO_PIN_15|GPIO_PIN_4, GPIO_PIN_RESET);
+
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
@@ -266,6 +272,15 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PB1 PB2 PB12 PB13
+                           PB14 PB15 PB4 */
+  GPIO_InitStruct.Pin = GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_12|GPIO_PIN_13
+                          |GPIO_PIN_14|GPIO_PIN_15|GPIO_PIN_4;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 

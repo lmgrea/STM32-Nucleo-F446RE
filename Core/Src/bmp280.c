@@ -16,7 +16,6 @@ uint8_t config = 0x27;
 
 int bmp280_read_registers(I2C_HandleTypeDef *hi2c1, UART_HandleTypeDef *huart2)
 {
-	char msg[100];
 	uint8_t BMP280_ID;
 
 	HAL_I2C_Mem_Read(hi2c1, BMP280_ADDR, BMP280_ID_ADDR, I2C_MEMADD_SIZE_8BIT, &BMP280_ID, 1, HAL_MAX_DELAY);
@@ -24,12 +23,6 @@ int bmp280_read_registers(I2C_HandleTypeDef *hi2c1, UART_HandleTypeDef *huart2)
 	HAL_I2C_Mem_Read(hi2c1, BMP280_ADDR, 0x88, I2C_MEMADD_SIZE_8BIT, (uint8_t*)&dig_T1, 2, HAL_MAX_DELAY);
 	HAL_I2C_Mem_Read(hi2c1, BMP280_ADDR, 0x8A, I2C_MEMADD_SIZE_8BIT, (uint8_t*)&dig_T2, 2, HAL_MAX_DELAY);
 	HAL_I2C_Mem_Read(hi2c1, BMP280_ADDR, 0x8C, I2C_MEMADD_SIZE_8BIT, (uint8_t*)&dig_T3, 2, HAL_MAX_DELAY);
-
-	sprintf(msg, "BMP280 ID: 0x%02X\r\n", BMP280_ID);
-
-	HAL_UART_Transmit(huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
-
-	HAL_Delay(1000);
 
 	return 0;
 }
@@ -55,7 +48,7 @@ int bmp280_calc_temp_press()
 	t_fine = var1 + var2;
 	T = (t_fine * 5 + 128) >> 8;
 	T = T * 9 / 5 + 3200;
-	return T;
+	return (int)T;
 }
 
 void bmp280_print_temp(UART_HandleTypeDef *huart2)

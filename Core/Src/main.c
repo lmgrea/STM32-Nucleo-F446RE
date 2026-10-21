@@ -26,6 +26,7 @@
 
 #include "bmp280.h"
 #include "lcd1602a_v2.h"
+#include "button.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -100,20 +101,49 @@ int main(void)
   /* USER CODE BEGIN 2 */
   bmp280_init(&hi2c1);
   lcd1602_init(&hi2c1);
-  lcd_display_string("Temperature:", 1);
+  typedef enum
+  {
+	  TEMPERATURE,
+	  PRESSURE,
+	  ACCELEROMETER
+  }SystemState;
+  SystemState state = TEMPERATURE;
+  int temperature;
+  char temperature_string[12];
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  bmp280_read_registers(&hi2c1, &huart2);
-	  int temperature = bmp280_calc_temp_press() / 100;
-	  char temperature_string[12];
-	  bmp280_print_temp(&huart2);
-	  snprintf(temperature_string, sizeof(temperature_string), "%d F", temperature);
-
-	  lcd_display_string(temperature_string, 2);
+	  switch(state)
+	  {
+	  case TEMPERATURE:
+		  bmp280_read_registers(&hi2c1, &huart2);
+		  temperature = bmp280_calc_temp_press() / 100;
+		  bmp280_print_temp(&huart2);
+		  snprintf(temperature_string, sizeof(temperature_string), "%d F", temperature);
+		  lcd_display_string("Temperature:", 1);
+		  lcd_display_string(temperature_string, 2);
+		  if (read_button())
+			  state = PRESSURE;
+		  break;
+	  case PRESSURE:
+		  lcd_display_string("Pressure:", 1);
+		  lcd_display_string("__", 2);
+		  if (read_button())
+			  state = ACCELEROMETER;
+		  break;
+	  case ACCELEROMETER:
+		  lcd_display_string("Acceleration:", 1);
+		  lcd_display_string("_______", 2);
+		  if (read_button())
+			  state = TEMPERATURE;
+		  break;
+	  default:
+		  state = TEMPERATURE;
+		  break;
+	  }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -260,11 +290,11 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_12|GPIO_PIN_13
                           |GPIO_PIN_14|GPIO_PIN_15|GPIO_PIN_4, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : B1_Pin */
-  GPIO_InitStruct.Pin = B1_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  /*Configure GPIO pin : PC13 */
+  GPIO_InitStruct.Pin = GPIO_PIN_13;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pin : LD2_Pin */
   GPIO_InitStruct.Pin = LD2_Pin;

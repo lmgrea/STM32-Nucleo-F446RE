@@ -61,6 +61,5 @@ void bmp280_print_temp(UART_HandleTypeDef *huart2)
 
 void bmp280_init(I2C_HandleTypeDef *hi2c1)
 {
-	HAL_I2C_Mem_Write(hi2c1, BMP280_ADDR, 0xF4,
-	                  I2C_MEMADD_SIZE_8BIT, &config, 1, HAL_MAX_DELAY);
+	HAL_I2C_Mem_Write(hi2c1, BMP280_ADDR, 0xF4, I2C_MEMADD_SIZE_8BIT, &config, 1, HAL_MAX_DELAY);
 }

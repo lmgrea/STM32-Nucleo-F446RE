@@ -22,6 +22,9 @@
 	GPIO_PIN_4 =  E
 */
 
+static char* last_string1;
+static char* last_string2;
+
 void lcd1602_init(I2C_HandleTypeDef *hi2c1)
 {
 	// RS and RW low for initialization
@@ -97,6 +100,17 @@ void lcd_write_nibble(GPIO_TypeDef *port, uint16_t D7, uint16_t D6, uint16_t D5,
 
 void lcd_display_string(char * string, int position)
 {
+	if((strcmp(last_string1, string) != 0) && (position == 1))
+	{
+		clear_display();
+		last_string1 = string;
+	}
+	else if (strcmp(last_string2, string) != 0 && (position == 2))
+	{
+		clear_display();
+		last_string2 = string;
+	}
+
 	int length = strlen(string);
 	int starting_offset = (16 - length) / 2;
 
@@ -130,4 +144,16 @@ void lcd_display_string(char * string, int position)
 
 		lcd_write_byte(GPIOB, GPIO_PIN_12, GPIO_PIN_13, GPIO_PIN_14, GPIO_PIN_15, ascii);
 	}
+}
+
+void clear_display()
+{
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_RESET); // RS
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET); // RW
+
+	HAL_Delay(1);
+
+	lcd_write_byte(GPIOB, GPIO_PIN_12, GPIO_PIN_13, GPIO_PIN_14, GPIO_PIN_15, 1);
+
+	HAL_Delay(1);
 }

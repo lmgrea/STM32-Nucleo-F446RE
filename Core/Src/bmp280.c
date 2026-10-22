@@ -3,9 +3,10 @@
 
 #include "bmp280.h"
 
-static const uint8_t BMP280_ADDR = 0x76 << 1; // 8 bit address found in datasheet when SDL is GND and CSB is 3.3V
-static const uint8_t BMP280_ID_ADDR = 0xD0;
+static const uint8_t BMP280_ADDR 			= 0x76 << 1; // 8 bit address found in datasheet when SDL is GND and CSB is 3.3V
+static const uint8_t BMP280_ID_ADDR 		= 0xD0;
 static const uint8_t BMP280_TEMP_PRESS_ADDR = 0xF7;
+static const uint8_t CONFIG_REG 			= 0xF4;
 
 uint8_t BMP280_RAW_TEMP_PRESS[6];
 uint16_t dig_T1;
@@ -13,6 +14,11 @@ int16_t dig_T2, dig_T3;
 uint32_t adc_T;
 int32_t T;
 uint8_t config = 0x27;
+
+void bmp280_init(I2C_HandleTypeDef *hi2c1)
+{
+	HAL_I2C_Mem_Write(hi2c1, BMP280_ADDR, CONFIG_REG, I2C_MEMADD_SIZE_8BIT, &config, 1, HAL_MAX_DELAY);
+}
 
 int bmp280_read_registers(I2C_HandleTypeDef *hi2c1, UART_HandleTypeDef *huart2)
 {
@@ -59,7 +65,3 @@ void bmp280_print_temp(UART_HandleTypeDef *huart2)
 	HAL_UART_Transmit(huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
 }
 
-void bmp280_init(I2C_HandleTypeDef *hi2c1)
-{
-	HAL_I2C_Mem_Write(hi2c1, BMP280_ADDR, 0xF4, I2C_MEMADD_SIZE_8BIT, &config, 1, HAL_MAX_DELAY);
-}

@@ -141,12 +141,21 @@ void bmp280_init(I2C_HandleTypeDef *hi2c1)
 
 
 ## Step 4 - Inspecting the I2C Protocol
-Now that I have the program running, I wanted to learn to use PulseView to view signals.
+Now that I have the program running with an I2C exchange, I would like to inspect the protocol's signals.
 
-PulseView is a very neat program. You can view signals that the microcontroller, the master device in this instance, is sending and receiving to and from the slave devices, which is just the BMP280 for now.
+PulseView is a software that graphically displays signals that are wired to a logic analyzer. The application is installed alongside another called Zadig which provides the drivers for different devices. My logic analyzer uses the generic fx2lafw driver.
 
-This image shows a complete exchange between the microcontroller and sensor.
-![](images/bmp280_addr_signal.png)
+After installing the driver, select it in PulseView, then scan for devices that use the driver. If all goes well, the 8 input logic analyzer should appear as an option.
+
+The number of samples and the sampling frequency is also configurable within PulseView. At first, my frequency was too slow which resulted in incorrect readings. I ended up using a frequency of 1 MHz.
+
+What's cool about PulseView is that you can select protocol decoders. These allow you to select signals from the logic analyzer and PulseView will interpret the signals as the communication protocol you selected.
+
+As you can see below, I selected D0 as the Serial Clock (SCL) and D1 as the Serial Data Line (SDA). The protocol decoder reveals what information the signals contain.
+
+![](images/bmp280_init_function_signals.png)
+
+So far, I like what I see. At the very least I recognize the slave address of the BMP280 as `0x76` and it seems to be writing to the control register (`0xF4`) with a value of `0x27`, which matches the value I went over earlier. I think I'll dig in a little deeper to the I2C protocol though.
 
 ## References
 *"If I have seen further it is by standing on the shoulders of Giants."* - Isaac Newton

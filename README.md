@@ -1,12 +1,16 @@
 # Embedded C on STM32-Nucleo-F446RE
 
+<p align="center">
+<video src="videos/stm32_so_far_part1.mp4" width="100%" autoplay loop muted playsinline controls></video>
+</p>
+
 This is a personal project that documents my first non-academic foray into embedded C programming. This project uses the following software and technologies to read temperature, pressure, and accelerometer data and display them on an LCD:
 
 ## Software
 - STM32CubeIDE
 - STM32CubeMX
 - PuTTY
-- PulseView
+- PulseView/Zadig
 
 ## Hardware
 - STM32 Nucleo-F446RE Development Board
@@ -24,13 +28,13 @@ I decided to start with the BMP280, as it had the fewest pins and therefore seem
 As you can see in the image below, the sensor was shipped without its header pins soldered to the board.
 
 <p align="center">
-<img src="images/unsoldered_bmp280.jpg" width="35%">
+<img src="images/unsoldered_bmp280.jpg" width="35%"></img>
  </p>
 
 This would be my first attempt at soldering electronics, so after a quick YouTube tutorial, I did the best I could and now have a functioning BMP280.
 
 <p align="center">
-<img src="images/soldered_bmp280.jpg" width="35%">
+<img src="images/soldered_bmp280.jpg" width="35%"></img>
 </p>
 
 ## Step 2 - Configuring Peripherals
@@ -40,7 +44,7 @@ Using this interface, you can select different pins and configure their function
 
 When a project is initialized using a Nucleo board, CubeMX provides a board-specific starting configuration, including relevant clock and peripheral settings. These settings can still be modified manually. To start out, I'm using the default configuration.
 
-Now that CubeMX has configured the initialization code for me, I need to configure some pins that I'll be using for I2C. To do this, I set PB9 and PB8 to SDA and SCL respectively.
+Now that CubeMX has configured the initialization code for me, I need to configure some pins that I'll be using for the Inter-Integrated Circuit (I2C) communication protocol. To do this, I set PB9 and PB8 to the Serial Data Line (SDA) and Serial Clock (SCL) respectively.
 
 <br>
 
@@ -48,18 +52,18 @@ Now that CubeMX has configured the initialization code for me, I need to configu
 <div align="center">
 To find which pins in CubeMX correspond to which peripherals you need, this diagram from Mbed's old website was useful:<br>
 
-<img src="images/pinout_diagram.png" width="80%"><br><br>
+<img src="images/pinout_diagram.png" width="80%"></img><br><br>
 
 This is a screenshot from CubeMX that shows the entire chip configured.<br>
 
-<img src="images/general_configuration.png" width="80%"><br><br>
+<img src="images/general_configuration.png" width="80%"></img><br><br>
 
 I configured PB8 and PB9 for I2C1, using PB8 as SCL and PB9 as SDA.<br>
 
-<img src="images/com_protocols_pins.png" width="80%"><br><br>
+<img src="images/com_protocols_pins.png" width="80%"></img><br><br>
 </div>
 
-## Step 3 - Writing Code
+## Step 3 - Initializing the BMP280
 Now that the pins are configured, I generate code from CubeMX. This updates all of the code in the project files that are necessary to set up my Nucleo board.
 
 While there are many files that are generated in a project, the main application code is written in `Core/Src/main.c`. In an effort to organize the code, I am writing most of my drivers for different sensors in different files. For example, I have `bmp280.c` in `Core/Src/bmp280.c` and the corresponding header file in `Core/Inc/bmp280.h`.
@@ -102,7 +106,7 @@ Now I'd like to walk through a few of the functions from the code snippets above
 
 To initialize the BMP280, I have to write to the config register with the address `0xF4`. The [datasheet](https://cdn-shop.adafruit.com/datasheets/BST-BMP280-DS001-11.pdf) details the registers that need to be written to and what values to write based on desired functionality. Section 4.3.4 details the different values of the control register. For now, I will be using the normal mode of the sensor with x1 oversampling for both temperature and pressure.
 
-The config register is an 8 bit register. The 3 most significant bits, 7, 6, and 5 control the oversampling of the temperature sensor. Bits 4, 3, and 2 are for pressure oversampling, and the last two bits, 1 and 0, are for the mode. For x1 oversampling of both temperature and pressure, the top 6 bits of the 8 bit integer I write to the control register must be `001 001`. Section 3.6 tells me that the last two bits need to be `11` to have the sensor operate in the Normal Mode. So I need to write an 8 bit value of `0010 0111` to the control register at the address `0xF4`.
+The config register is an 8 bit register. The 3 most significant bits, 7, 6, and 5 control the oversampling of the temperature sensor. Bits 4, 3, and 2 are for pressure oversampling, and the last two bits, 1 and 0, are for the mode. For x1 oversampling of both temperature and pressure, the top 6 bits of the 8 bit integer I write to the control register must be `001 001`. Section 3.6 describes the conditions needed for the sensor to operate in the Normal Mode, specifically that the last two bits of the control register need to be assigned a value of `11`. So, in totality, I need to write an 8 bit value of `0010 0111` to the control register at the address `0xF4` to properly initialize the BMP280.
 
 Knowing the register address and the value I want to write to that address only covers 2 of the 7 parameters that `HAL_I2C_Mem_Write()` needs. Here's the full function call:
 
@@ -112,17 +116,21 @@ HAL_I2C_Mem_Write(hi2c1, BMP280_ADDR, CONFIG_REG, I2C_MEMADD_SIZE_8BIT, &config,
 
 Now I'd like to go through each parameter one by one. The first parameter is a pointer to a `I2C_HandleTypeDef` structure that contains the configuration information for the specified I2C. This is a `struct` that was generated by CubeMX when I configured the I2C1 peripherals. The name of the `struct` is `hi2c1`, so I pass that to my initialization function.
 
-Next is the address of the device. Section 5.2 of the datasheet goes over the I2C interface and explains the address. The address changes depending on how the pins are connected. If the Serial Data Output (SDO) pin is grounded, the slave address is `0x76`. If SDO is connected to VDDIOI then the address is `0x77`. I decided to ground the SDO pin, so my address is `0x76`. The datasheet goes on to explain that to write and read with I2C, the address becomes `1110 11X0` (where X is 'don't care', meaning in this case it depends on the state of the SDO pin). So for me, the address is `1110 1100`. The least significant bit changes depending if the protocol is reading or writing, so I just shift the address 1 bit to the left to prepare it for the HAL:
+Next is the address of the device. Section 5.2 of the datasheet goes over the I2C interface and explains the address. The address changes depending on how the pins are connected. If the Serial Data Output (SDO) pin is grounded, the slave address is `0x76`. If SDO is connected to VDDIO then the address is `0x77`. I decided to ground the SDO pin, so my address is `0x76`.
+
+The datasheet goes on to explain that to write and read with I2C, the address becomes `1110 11X0` (where X is 'don't care', in this case meaning it depends on the state of the SDO pin). So for me, the address is `1110 1100`.
+
+The least significant bit changes depending if the protocol is reading or writing, so I just shift the address 1 bit to the left to prepare it for the HAL:
 
 <p align="center"><code>static const uint8_t BMP280_ADDR = 0x76 << 1;</code></p>
 
-The third parameter is the address of the register I'm writing to, which in this case is the config register which I already went over.
+The third parameter is the address of the register that is being written to, which in this case is the config register as described above.
 
-The fourth is the size of the internal memory address, which in this case is 8 bits for the 8 bit control register.
+The fourth is the size of the internal memory address, which for this call is 8 bits for the 8 bit control register.
 
-Then for the 5th, I pass a pointer to the data I'm writing to the register, which I define as `uint8_t config = 0x27` at the top of the file.
+The 5th parameter takes a pointer to the data that is being written to the register, which I define as `uint8_t config = 0x27` at the top of the file.
 
-6th is the amount of data to be sent in bytes, so just `1`
+6th is the amount of data to be sent in bytes, so just `1` for this case.
 
 Lastly is the timeout, which specifies how long to continue trying to send data.
 
@@ -143,7 +151,7 @@ void bmp280_init(I2C_HandleTypeDef *hi2c1)
 ## Step 4 - Inspecting the I2C Protocol
 Now that I have the program running with an I2C exchange, I would like to inspect the protocol's signals.
 
-PulseView is a software that graphically displays signals that are wired to a logic analyzer. The application is installed alongside another called Zadig which provides the drivers for different devices. My logic analyzer uses the generic fx2lafw driver.
+`PulseView` is a software that graphically displays signals that are wired to a logic analyzer. The application is installed alongside another called `Zadig` which provides the drivers for different devices. My logic analyzer uses the generic `fx2lafw` driver.
 
 After installing the driver, select it in PulseView, then scan for devices that use the driver. If all goes well, the 8 input logic analyzer should appear as an option.
 
@@ -151,11 +159,36 @@ The number of samples and the sampling frequency is also configurable within Pul
 
 What's cool about PulseView is that you can select protocol decoders. These allow you to select signals from the logic analyzer and PulseView will interpret the signals as the communication protocol you selected.
 
-As you can see below, I selected D0 as the Serial Clock (SCL) and D1 as the Serial Data Line (SDA). The protocol decoder reveals what information the signals contain.
+As you can see below, I selected the signal D0 as the SCL and the signal D1 as the SDA. The protocol decoder reveals what information the signals contain.
 
-![](images/bmp280_init_function_signals.png)
+<img src="images/bmp280_init_function_signals.png" width="100%"></img>
 
-So far, I like what I see. At the very least I recognize the slave address of the BMP280 as `0x76` and it seems to be writing to the control register (`0xF4`) with a value of `0x27`, which matches the value I went over earlier. I think I'll dig in a little deeper to the I2C protocol though.
+So far, I like what I see. At the very least I recognize the slave address of the BMP280 as `0x76` and it seems to be writing to the control register (`0xF4`) with a value of `0x27`, which matches the value I went over earlier. I think I'd like to dig a little deeper into the I2C protocol though.
+
+### The I2C Specification
+
+The start condition is initiated by SDA pulled low, followed by SCL, claiming the bus for communication.
+
+Data is communicated in frames
+
+Start -> Address Frame -> One or More Data Frames Consisting of One Byte -> Read/Write (only for address frame, not for data frame) -> Acknowledge or Negative Acknowledge -> Stop
+
+Stop condition is initiated by setting SCL high, followed by SDA, the opposite order of the start condition.
+
+## Step 5 - Read Temperature Data from the BMP280
+
+To get the temperature data there are a total of 4 registers to read from.
+
+For temp and press data, 'burst read' 6 contiguous registers starting at 0xF7 and ending at 0xFC.
+
+
+
+## Step 6 - Calculate Temperature & Transmit over Universal Asynchronous Receiver/Transmitter (UART)
+
+## Step 7 - Initialize LCD
+
+## Step 8 - Display Strings
+
 
 ## References
 *"If I have seen further it is by standing on the shoulders of Giants."* - Isaac Newton
@@ -163,6 +196,8 @@ So far, I like what I see. At the very least I recognize the slave address of th
 This [YouTube tutorial by Shawn Hymel for the DigiKey YouTube channel](https://www.youtube.com/watch?v=hyZS2p1tW-g&list=PLEBQazB0HUyRYuzfi4clXsKUSgorErmBv) was essential for my introduction to the STM32 development environment.
 
 [ST's user manual](https://www.st.com/resource/en/user_manual/um1724-stm32-nucleo32-boards-mb1180-stmicroelectronics.pdf) shows what pins are compatible with what peripherals. This website was helpful to relate things like PB_8 to I2C1_SCL and PB_9 to I2C1_SDA, which told me where to look in CubeMX for the signals I needed.
+
+I briefly referenced [ST's Reference Manual](https://www.st.com/resource/en/reference_manual/rm0390-stm32f446xx-advanced-armbased-32bit-mcus-stmicroelectronics.pdf) to investigate how the I2C protocol functioned on the microcontroller. Details relating to how the I2C peripherals count SCL pulses.
 
 This is the [datasheet from Bosch for the BMP280](https://cdn-shop.adafruit.com/datasheets/BST-BMP280-DS001-11.pdf). It contains the information needed to access the temperature and pressure data from the sensor's registers. 
 

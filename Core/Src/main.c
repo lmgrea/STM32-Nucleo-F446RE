@@ -101,6 +101,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   bmp280_init(&hi2c1);
   lcd1602_init(&hi2c1);
+
   typedef enum
   {
 	  TEMPERATURE,
@@ -108,8 +109,11 @@ int main(void)
 	  ACCELEROMETER
   }SystemState;
   SystemState state = TEMPERATURE;
-  int temperature;
+
+  int* bmp280Results;
   char temperature_string[12];
+  char pressure_string[12];
+  
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -119,30 +123,43 @@ int main(void)
 	  switch(state)
 	  {
 	  case TEMPERATURE:
-		  bmp280_read_registers(&hi2c1, &huart2);
-		  temperature = bmp280_calc_temp_press() / 100;
+		  bmp280_read_registers(&hi2c1);
+		  bmp280Results = bmp280_calculate_temperature();
 		  bmp280_print_temp(&huart2);
-		  snprintf(temperature_string, sizeof(temperature_string), "%d F", temperature);
+		  snprintf(temperature_string, sizeof(temperature_string), "%d F", bmp280Results[TEMPERATURE]);
 		  lcd_display_string("Temperature:", 1);
 		  lcd_display_string(temperature_string, 2);
+
 		  if (read_button())
 			  state = PRESSURE;
+
 		  break;
+
 	  case PRESSURE:
+      bmp280_read_registers(&hi2c1);
+		  bmp280Results = bmp280_calculate_temperature();
+      snprintf(pressure_string, sizeof(pressure_string), "%d Pa", bmp280Results[PRESSURE]);
 		  lcd_display_string("Pressure:", 1);
-		  lcd_display_string("__", 2);
+		  lcd_display_string(pressure_string, 2);
+
 		  if (read_button())
 			  state = ACCELEROMETER;
+
 		  break;
+
 	  case ACCELEROMETER:
 		  lcd_display_string("Acceleration:", 1);
 		  lcd_display_string("_______", 2);
+
 		  if (read_button())
 			  state = TEMPERATURE;
+
 		  break;
+
 	  default:
 		  state = TEMPERATURE;
 		  break;
+
 	  }
     /* USER CODE END WHILE */
 

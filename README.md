@@ -1,8 +1,7 @@
+
 # Embedded C on STM32-Nucleo-F446RE
 
-<p align="center">
-<video src="videos/stm32_so_far_part1.mp4" width="100%" autoplay loop muted playsinline controls></video>
-</p>
+https://github.com/user-attachments/assets/3165eeec-028f-43a8-a2ad-011c6933b187
 
 This is a personal project that documents my first non-academic foray into embedded C programming. This project uses the following software and technologies to read temperature, pressure, and accelerometer data and display them on an LCD:
 
